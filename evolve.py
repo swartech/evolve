@@ -13,14 +13,14 @@ current_window = window.subsurface(pygame.Rect(400, 0, 200, 200))
 pygame.display.set_caption('Your\'e Move Atheists')
 
 #load image
-img = pygame.image.load('test3.jpg')
+img = pygame.image.load('test.jpg')
 
 solution = []
-num_circles = 128
-mutation_probability = 0.01
+num_circles = 1024
+mutation_probability = 0.0025
 mutation_factor = 1
 generation = 0
-black_and_white = True
+black_and_white = False
 
 class position():
   def __init__(self, x, y):
@@ -28,9 +28,10 @@ class position():
     self.y = y
 
 class circle():
-  def __init__(self, pos, radius, colour):
+  def __init__(self, pos, width, height, colour):
     self.pos = pos
-    self.radius = radius
+    self.width = width
+    self.height = height
     self.colour = colour
 
 
@@ -44,8 +45,12 @@ class circle():
       self.pos.y = int(max(0, min(200, self.pos.y)))
       
     if (random.random() < mutation_probability):
-      self.radius += random.randint(-50, 50) * mutation_factor
-      self.radius = int(max(1, min(50, self.radius)))
+      self.width += random.randint(-145, 145) * mutation_factor
+      self.width = int(max(5, min(150, self.width)))
+
+    if (random.random() < mutation_probability):
+      self.height += random.randint(-145, 145) * mutation_factor
+      self.height = int(max(5, min(150, self.height)))
     
     if (random.random() < mutation_probability):
       self.colour[0] = int(max(0, min(255, self.colour[0] + random.randint(-255, 255) * mutation_factor)))
@@ -60,7 +65,7 @@ class circle():
 #initialise
 def init():
     for i in xrange(num_circles):
-      c = circle(position(random.randint(0, 200), random.randint(0, 200)), random.randint(0, 200), [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 128])
+      c = circle(position(random.randint(0, 200), random.randint(0, 200)), random.randint(5, 150), random.randint(5, 150), [random.randint(0, 255), random.randint(0, 255), random.randint(0, 255), 64])
       solution.append(c)
 
 #fitness as the difference between the images
@@ -71,16 +76,19 @@ def get_fitness():
   #sum the difference of the images
   for i in xrange(len(target)):
     for j in xrange(len(target[0])):
-      error += abs(target[i, j] - current[i, j])
-  error = (error / (len(target) * len(target[0])))
-  return error
+      col_target = Color(target[i, j]) 
+      col_current = Color(current[i, j])
+      error += abs(col_target.r - col_current.r)
+      error += abs(col_target.g - col_current.g)
+      error += abs(col_target.b - col_current.b)
+  error = (error / ((len(target) * len(target[0])) * 255.0 * 3.0))
+  return 1 - error
 
 
-def render_transparent_circle(color, radius, width=0):
-    size = radius * 2
-    temp_surf = pygame.Surface((size, size), SRCALPHA)
+def render_transparent_circle(color, w, h, width=0):
+    temp_surf = pygame.Surface((w, h), SRCALPHA)
     temp_surf.fill(Color(0, 0, 0, 0))
-    pygame.draw.circle(temp_surf, color, (radius, radius), radius, width)
+    pygame.draw.ellipse(temp_surf, color, Rect(0, 0, w, h))
     return temp_surf
 
 
@@ -93,9 +101,9 @@ def draw_current_solution():
   current_window.fill(pygame.Color(0, 0, 0)) #clear the screen
   for s in current_solution:
     if (black_and_white):
-      circ = render_transparent_circle(pygame.Color(s.colour[0], s.colour[0], s.colour[0], s.colour[3]), s.radius)
+      circ = render_transparent_circle(pygame.Color(s.colour[0], s.colour[0], s.colour[0], s.colour[3]), s.width, s.height)
     else:
-      circ = render_transparent_circle(pygame.Color(s.colour[0], s.colour[1], s.colour[2], s.colour[3]), s.radius)
+      circ = render_transparent_circle(pygame.Color(s.colour[0], s.colour[1], s.colour[2], s.colour[3]), s.width, s.height)
     current_window.blit(circ, (s.pos.x, s.pos.y))
   pygame.display.update()
 
@@ -104,9 +112,9 @@ def draw_best_solution():
   best_window.fill(pygame.Color(0, 0, 0)) #clear the screen
   for s in solution:
     if (black_and_white):
-      circ = render_transparent_circle(pygame.Color(s.colour[0], s.colour[0], s.colour[0], s.colour[3]), s.radius)
+      circ = render_transparent_circle(pygame.Color(s.colour[0], s.colour[0], s.colour[0], s.colour[3]), s.width, s.height)
     else:
-      circ = render_transparent_circle(pygame.Color(s.colour[0], s.colour[1], s.colour[2], s.colour[3]), s.radius)
+      circ = render_transparent_circle(pygame.Color(s.colour[0], s.colour[1], s.colour[2], s.colour[3]), s.width, s.height)
     best_window.blit(circ, (s.pos.x, s.pos.y))
   pygame.display.update()
 
@@ -136,7 +144,7 @@ while True:
   current_fitness = get_fitness()
 
   #keep the best solution
-  if current_fitness < fitness:
+  if current_fitness > fitness:
     fitness = current_fitness
     solution = deepcopy(current_solution)
     draw_best_solution()
